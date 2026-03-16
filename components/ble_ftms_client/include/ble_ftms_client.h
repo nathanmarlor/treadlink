@@ -29,6 +29,7 @@ typedef void (*ftms_conn_cb_t)(bool connected);
 typedef void (*ftms_scan_cb_t)(const ftms_scan_result_t *result);
 
 esp_err_t ftms_client_init(ftms_data_cb_t data_cb, ftms_conn_cb_t conn_cb);
+void ftms_client_set_log_cb(void (*fn)(char, const char *, ...));
 void ftms_client_set_scan_cb(ftms_scan_cb_t cb);
 esp_err_t ftms_client_scan_start(void);
 esp_err_t ftms_client_scan_stop(void);
@@ -39,6 +40,7 @@ ftms_state_t ftms_client_get_state(void);
 
 const ftms_scan_result_t *ftms_client_get_scan_results(uint8_t *count);
 void ftms_client_clear_scan_results(void);
+uint16_t ftms_client_get_reconnect_attempts(void);
 
 // FTMS Control Point — treadmill control
 bool ftms_client_has_control(void);

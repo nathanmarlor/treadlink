@@ -32,6 +32,14 @@ static ftms_data_cb_t s_data_cb;
 static ftms_conn_cb_t s_conn_cb;
 static ftms_scan_cb_t s_scan_cb;
 
+// Optional web log function (set externally)
+static void (*s_web_log_fn)(char level, const char *fmt, ...);
+
+void ftms_client_set_log_cb(void (*fn)(char, const char *, ...))
+{
+    s_web_log_fn = fn;
+}
+
 // Connection
 static uint16_t s_conn_handle;
 static uint16_t s_treadmill_data_val_handle;
@@ -43,7 +51,10 @@ static uint8_t s_saved_addr[6];
 static uint8_t s_saved_addr_type;
 static bool s_should_reconnect;
 static uint32_t s_reconnect_delay_ms;
-#define RECONNECT_INITIAL_MS  5000
+static uint16_t s_reconnect_attempts;
+static bool s_had_working_connection; // true if we were streaming before disconnect
+#define RECONNECT_FAST_MS     2000    // first attempt after real disconnect
+#define RECONNECT_INITIAL_MS  5000    // first attempt after failed connect
 #define RECONNECT_MAX_MS      60000
 #define DISCOVERY_TIMEOUT_MS  10000
 
@@ -254,7 +265,10 @@ static void reconnect_task(void *arg)
     while (1) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         if (s_should_reconnect && s_state == FTMS_STATE_RECONNECTING) {
-            ESP_LOGI(TAG, "Attempting reconnection...");
+            ESP_LOGI(TAG, "Attempting reconnection (attempt %d)...", s_reconnect_attempts + 1);
+            if (s_web_log_fn) {
+                s_web_log_fn('I', "Reconnecting to treadmill (attempt %d)...", s_reconnect_attempts + 1);
+            }
             ftms_client_connect(s_saved_addr, s_saved_addr_type);
         }
     }
@@ -354,8 +368,20 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
             s_conn_handle = event->connect.conn_handle;
             set_state(FTMS_STATE_DISCOVERING);
             s_reconnect_delay_ms = RECONNECT_INITIAL_MS;
+            s_reconnect_attempts = 0;
             xTimerStart(s_discovery_timer, 0);
             ESP_LOGI(TAG, "Connected to treadmill (handle=%d)", s_conn_handle);
+
+            // Request faster supervision timeout (4s) for quicker dropout detection
+            struct ble_gap_upd_params conn_params = {
+                .itvl_min = 24,             // 30ms
+                .itvl_max = 40,             // 50ms
+                .latency = 0,
+                .supervision_timeout = 400, // 4 seconds (vs default ~20s)
+                .min_ce_len = 0,
+                .max_ce_len = 0,
+            };
+            ble_gap_update_params(s_conn_handle, &conn_params);
 
             int rc = ble_gattc_disc_svc_by_uuid(s_conn_handle, &FTMS_SVC_UUID.u,
                                                   ftms_on_svc_discovered, NULL);
@@ -365,13 +391,14 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
 
             if (s_conn_cb) s_conn_cb(true);
         } else {
-            ESP_LOGE(TAG, "Connection failed: %d", event->connect.status);
+            s_reconnect_attempts++;
+            ESP_LOGE(TAG, "Connection failed: %d (attempt %d)", event->connect.status, s_reconnect_attempts);
             set_state(s_should_reconnect ? FTMS_STATE_RECONNECTING : FTMS_STATE_IDLE);
             if (s_should_reconnect) {
                 // Exponential backoff: 5s -> 10s -> 20s -> 40s -> 60s max
                 xTimerChangePeriod(s_reconnect_timer, pdMS_TO_TICKS(s_reconnect_delay_ms), 0);
                 xTimerStart(s_reconnect_timer, 0);
-                ESP_LOGI(TAG, "Reconnect in %lums", (unsigned long)s_reconnect_delay_ms);
+                ESP_LOGI(TAG, "Reconnect in %lums (attempt %d)", (unsigned long)s_reconnect_delay_ms, s_reconnect_attempts + 1);
                 if (s_reconnect_delay_ms < RECONNECT_MAX_MS) {
                     s_reconnect_delay_ms *= 2;
                     if (s_reconnect_delay_ms > RECONNECT_MAX_MS) {
@@ -385,6 +412,7 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGW(TAG, "Disconnected from treadmill (reason=%d)", event->disconnect.reason);
         xTimerStop(s_discovery_timer, 0);
+        s_had_working_connection = (s_state == FTMS_STATE_STREAMING);
         set_state(s_should_reconnect ? FTMS_STATE_RECONNECTING : FTMS_STATE_IDLE);
         s_treadmill_data_val_handle = 0;
         s_control_point_val_handle = 0;
@@ -393,10 +421,14 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
         if (s_conn_cb) s_conn_cb(false);
 
         if (s_should_reconnect) {
-            // Use current backoff delay (reset on successful connect)
-            xTimerChangePeriod(s_reconnect_timer, pdMS_TO_TICKS(s_reconnect_delay_ms), 0);
+            // Fast first reconnect (2s) after a working connection dropped,
+            // otherwise use the backoff delay
+            uint32_t delay = s_had_working_connection ? RECONNECT_FAST_MS : s_reconnect_delay_ms;
+            s_reconnect_attempts = 0;
+            s_reconnect_delay_ms = RECONNECT_INITIAL_MS;
+            xTimerChangePeriod(s_reconnect_timer, pdMS_TO_TICKS(delay), 0);
             xTimerStart(s_reconnect_timer, 0);
-            ESP_LOGI(TAG, "Reconnect in %lums", (unsigned long)s_reconnect_delay_ms);
+            ESP_LOGI(TAG, "Reconnect in %lums", (unsigned long)delay);
         }
         break;
 
@@ -445,6 +477,8 @@ esp_err_t ftms_client_init(ftms_data_cb_t data_cb, ftms_conn_cb_t conn_cb)
     s_control_point_val_handle = 0;
     s_control_acquired = false;
     s_reconnect_delay_ms = RECONNECT_INITIAL_MS;
+    s_reconnect_attempts = 0;
+    s_had_working_connection = false;
 
     s_reconnect_timer = xTimerCreate("ftms_recon", pdMS_TO_TICKS(RECONNECT_INITIAL_MS),
                                       pdFALSE, NULL, reconnect_timer_cb);
@@ -462,8 +496,19 @@ void ftms_client_set_scan_cb(ftms_scan_cb_t cb)
     s_scan_cb = cb;
 }
 
+uint16_t ftms_client_get_reconnect_attempts(void)
+{
+    return s_reconnect_attempts;
+}
+
 esp_err_t ftms_client_scan_start(void)
 {
+    // Stop any active reconnect before scanning
+    if (s_state == FTMS_STATE_RECONNECTING) {
+        xTimerStop(s_reconnect_timer, 0);
+        s_should_reconnect = false;
+    }
+
     s_scan_count = 0;
     set_state(FTMS_STATE_SCANNING);
 

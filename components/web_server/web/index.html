@@ -122,6 +122,15 @@ input:focus,select:focus{border-color:var(--accent)}
     <button class="btn btn-accent" id="btn-scan" onclick="doScan()">Scan for Treadmills</button>
     <ul class="scan-list" id="scan-list"></ul>
   </div>
+  <!-- Reconnecting -->
+  <div id="tm-reconnecting" style="display:none">
+    <div class="connected-info">
+      <div class="connected-name" id="recon-name"></div>
+      <div class="connected-addr" id="recon-status" style="color:var(--yellow)"></div>
+    </div>
+    <button class="btn btn-danger" onclick="doStopReconnect()" style="margin-top:12px">Stop Reconnecting</button>
+    <button class="btn-link" onclick="doStopAndScan()" style="display:block;text-align:center;width:100%">Scan for different treadmill</button>
+  </div>
   <!-- Connected: treadmill info -->
   <div id="tm-connected" style="display:none">
     <div class="connected-info">
@@ -283,19 +292,35 @@ function updateStatus(d) {
   isMph = d.speed_is_mph;
 
   $('dot-tm').className = 'conn-dot ' + (d.treadmill_connected ? 'on' : 'off');
-  $('st-tm').textContent = d.treadmill_connected ? 'Connected' : 'Disconnected';
+  if (d.treadmill_connected) {
+    $('st-tm').textContent = 'Connected';
+    $('st-tm').style.color = '';
+  } else if (d.reconnecting) {
+    $('dot-tm').className = 'conn-dot off';
+    $('st-tm').textContent = 'Reconnecting' + (d.reconnect_attempts > 0 ? ' (' + d.reconnect_attempts + ')' : '') + '\u2026';
+    $('st-tm').style.color = 'var(--yellow)';
+  } else {
+    $('st-tm').textContent = 'Disconnected';
+    $('st-tm').style.color = '';
+  }
   $('dot-gm').className = 'conn-dot ' + (d.garmin_connected ? 'on' : 'off');
   $('st-gm').textContent = d.garmin_connected ? 'Connected' : 'Disconnected';
 
   // Treadmill card: swap views
-  $('tm-disconnected').style.display = d.treadmill_connected ? 'none' : '';
+  $('tm-disconnected').style.display = d.treadmill_connected ? 'none' : (d.reconnecting ? 'none' : '');
   $('tm-connected').style.display = d.treadmill_connected ? '' : 'none';
+  $('tm-reconnecting').style.display = (!d.treadmill_connected && d.reconnecting) ? '' : 'none';
 
   if (d.treadmill_connected) {
     const name = d.treadmill_name || 'Treadmill';
     $('tm-name').textContent = name;
     $('tm-addr').textContent = d.treadmill_addr || '';
     $('scan-list').innerHTML = '';
+  } else if (d.reconnecting) {
+    $('recon-name').textContent = d.treadmill_name || 'Treadmill';
+    $('recon-status').textContent = d.reconnect_attempts > 0
+      ? 'Attempt ' + d.reconnect_attempts + '\u2026'
+      : 'Reconnecting\u2026';
   }
 
   // Show control panel when treadmill supports it
@@ -410,6 +435,16 @@ async function doConnect(addr, addrType, name) {
 
 async function doDisconnect() {
   try { await fetch('/api/disconnect', {method:'POST'}); } catch(e) {}
+}
+
+async function doStopReconnect() {
+  try { await fetch('/api/disconnect', {method:'POST'}); } catch(e) {}
+}
+
+async function doStopAndScan() {
+  await doStopReconnect();
+  await new Promise(r => setTimeout(r, 500));
+  doScan();
 }
 
 async function doDisconnectAndScan() {

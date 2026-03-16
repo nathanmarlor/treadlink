@@ -15,7 +15,6 @@
 static const char *TAG = "web_server";
 
 #include "index_html.h"
-static const size_t INDEX_HTML_LEN = sizeof(INDEX_HTML) - 1;
 
 // --- Log ring buffer ---
 #define LOG_MAX_ENTRIES 50
@@ -72,34 +71,58 @@ void web_log(char level, const char *fmt, ...)
 static esp_err_t handler_index(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
-    httpd_resp_send(req, INDEX_HTML, INDEX_HTML_LEN);
+    httpd_resp_send(req, (const char *)INDEX_HTML_GZ, INDEX_HTML_GZ_LEN);
     return ESP_OK;
 }
 
 static esp_err_t handler_status(httpd_req_t *req)
 {
-    cJSON *json = cJSON_CreateObject();
+    char buf[384];
+    ftms_state_t ftms_state = ftms_client_get_state();
+    bool reconnecting = (ftms_state == FTMS_STATE_RECONNECTING);
+    uint16_t recon_attempts = ftms_client_get_reconnect_attempts();
 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    cJSON_AddBoolToObject(json, "treadmill_connected", s_live_data.treadmill_connected);
-    cJSON_AddBoolToObject(json, "garmin_connected", s_live_data.garmin_connected);
-    cJSON_AddNumberToObject(json, "speed_kmh", s_live_data.speed_kmh);
-    cJSON_AddNumberToObject(json, "cadence_spm", s_live_data.cadence_spm);
-    cJSON_AddNumberToObject(json, "distance_m", s_live_data.distance_m);
-    cJSON_AddNumberToObject(json, "incline_pct", s_live_data.incline_pct);
-    cJSON_AddBoolToObject(json, "speed_is_mph", data_bridge_is_mph_mode());
-    cJSON_AddStringToObject(json, "treadmill_name", s_live_data.treadmill_name);
-    cJSON_AddStringToObject(json, "treadmill_addr", s_live_data.treadmill_addr);
-    cJSON_AddBoolToObject(json, "has_control", ftms_client_has_control());
+    int len = snprintf(buf, sizeof(buf),
+        "{\"treadmill_connected\":%s,\"garmin_connected\":%s,"
+        "\"speed_kmh\":%.2f,\"cadence_spm\":%u,\"distance_m\":%lu,"
+        "\"incline_pct\":%.1f,\"speed_is_mph\":%s,"
+        "\"treadmill_name\":\"%s\",\"treadmill_addr\":\"%s\","
+        "\"has_control\":%s,\"reconnecting\":%s,\"reconnect_attempts\":%u}",
+        s_live_data.treadmill_connected ? "true" : "false",
+        s_live_data.garmin_connected ? "true" : "false",
+        (double)s_live_data.speed_kmh,
+        (unsigned)s_live_data.cadence_spm,
+        (unsigned long)s_live_data.distance_m,
+        (double)s_live_data.incline_pct,
+        data_bridge_is_mph_mode() ? "true" : "false",
+        s_live_data.treadmill_name,
+        s_live_data.treadmill_addr,
+        ftms_client_has_control() ? "true" : "false",
+        reconnecting ? "true" : "false",
+        (unsigned)recon_attempts);
     xSemaphoreGive(s_mutex);
 
-    const char *str = cJSON_PrintUnformatted(json);
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, str, strlen(str));
-    cJSON_free((void *)str);
-    cJSON_Delete(json);
+    httpd_resp_send(req, buf, len);
     return ESP_OK;
+}
+
+static void json_escape(char *dst, size_t dst_sz, const char *src)
+{
+    size_t j = 0;
+    for (size_t i = 0; src[i] && j + 6 < dst_sz; i++) {
+        char c = src[i];
+        if (c == '"')       { dst[j++] = '\\'; dst[j++] = '"'; }
+        else if (c == '\\') { dst[j++] = '\\'; dst[j++] = '\\'; }
+        else if (c == '\n') { dst[j++] = '\\'; dst[j++] = 'n'; }
+        else if (c == '\r') { dst[j++] = '\\'; dst[j++] = 'r'; }
+        else if (c == '\t') { dst[j++] = '\\'; dst[j++] = 't'; }
+        else                { dst[j++] = c; }
+    }
+    dst[j] = '\0';
 }
 
 static esp_err_t handler_log(httpd_req_t *req)
@@ -113,28 +136,41 @@ static esp_err_t handler_log(httpd_req_t *req)
         }
     }
 
-    cJSON *arr = cJSON_CreateArray();
+    // Max per entry: {"id":99999,"level":"W","text":"..."} ≈ 180 bytes
+    // 50 entries * 180 + brackets + commas ≈ 9200 bytes
+    char *buf = malloc(LOG_MAX_ENTRIES * 180 + 64);
+    if (!buf) {
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_sendstr(req, "{\"error\":\"oom\"}");
+        return ESP_OK;
+    }
+
+    int pos = 0;
+    buf[pos++] = '[';
 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     uint32_t start = s_log_write_idx < LOG_MAX_ENTRIES ? 0 : s_log_write_idx - LOG_MAX_ENTRIES;
+    bool first = true;
     for (uint32_t i = start; i < s_log_write_idx; i++) {
         const log_entry_t *e = &s_log_ring[i % LOG_MAX_ENTRIES];
         if (e->id > after_id) {
-            cJSON *item = cJSON_CreateObject();
-            cJSON_AddNumberToObject(item, "id", e->id);
-            char lvl[2] = {e->level, '\0'};
-            cJSON_AddStringToObject(item, "level", lvl);
-            cJSON_AddStringToObject(item, "text", e->text);
-            cJSON_AddItemToArray(arr, item);
+            char escaped[LOG_MAX_LEN * 2];
+            json_escape(escaped, sizeof(escaped), e->text);
+            pos += snprintf(buf + pos, LOG_MAX_ENTRIES * 180 + 64 - pos,
+                "%s{\"id\":%lu,\"level\":\"%c\",\"text\":\"%s\"}",
+                first ? "" : ",",
+                (unsigned long)e->id, e->level, escaped);
+            first = false;
         }
     }
     xSemaphoreGive(s_mutex);
 
-    const char *str = cJSON_PrintUnformatted(arr);
+    buf[pos++] = ']';
+    buf[pos] = '\0';
+
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, str, strlen(str));
-    cJSON_free((void *)str);
-    cJSON_Delete(arr);
+    httpd_resp_send(req, buf, pos);
+    free(buf);
     return ESP_OK;
 }
 
@@ -159,25 +195,28 @@ static esp_err_t handler_scan_results(httpd_req_t *req)
     uint8_t count = 0;
     const ftms_scan_result_t *results = ftms_client_get_scan_results(&count);
 
-    cJSON *arr = cJSON_CreateArray();
+    // ~100 bytes per entry, max ~10 results
+    char buf[1200];
+    int pos = 0;
+    buf[pos++] = '[';
+
     for (int i = 0; i < count; i++) {
-        cJSON *item = cJSON_CreateObject();
-        char addr_str[18];
-        snprintf(addr_str, sizeof(addr_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-                 results[i].addr[5], results[i].addr[4], results[i].addr[3],
-                 results[i].addr[2], results[i].addr[1], results[i].addr[0]);
-        cJSON_AddStringToObject(item, "addr", addr_str);
-        cJSON_AddNumberToObject(item, "addr_type", results[i].addr_type);
-        cJSON_AddStringToObject(item, "name", results[i].name);
-        cJSON_AddNumberToObject(item, "rssi", results[i].rssi);
-        cJSON_AddItemToArray(arr, item);
+        char name_esc[64];
+        json_escape(name_esc, sizeof(name_esc), results[i].name);
+        pos += snprintf(buf + pos, sizeof(buf) - pos,
+            "%s{\"addr\":\"%02X:%02X:%02X:%02X:%02X:%02X\","
+            "\"addr_type\":%u,\"name\":\"%s\",\"rssi\":%d}",
+            i ? "," : "",
+            results[i].addr[5], results[i].addr[4], results[i].addr[3],
+            results[i].addr[2], results[i].addr[1], results[i].addr[0],
+            (unsigned)results[i].addr_type, name_esc, results[i].rssi);
     }
 
-    const char *str = cJSON_PrintUnformatted(arr);
+    buf[pos++] = ']';
+    buf[pos] = '\0';
+
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, str, strlen(str));
-    cJSON_free((void *)str);
-    cJSON_Delete(arr);
+    httpd_resp_send(req, buf, pos);
     return ESP_OK;
 }
 
@@ -283,21 +322,25 @@ static esp_err_t handler_config_get(httpd_req_t *req)
     treadlink_config_t config;
     config_store_load(&config);
 
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "treadmill_addr", config.treadmill_addr);
-    cJSON_AddStringToObject(json, "treadmill_name", config.treadmill_name);
-    cJSON_AddBoolToObject(json, "auto_connect", config.auto_connect);
-    cJSON_AddNumberToObject(json, "cadence_factor", config.cadence_factor);
-    cJSON_AddNumberToObject(json, "cadence_offset", config.cadence_offset);
-    cJSON_AddBoolToObject(json, "speed_is_mph", config.speed_is_mph);
-    cJSON_AddNumberToObject(json, "wifi_mode", config.wifi_mode);
-    cJSON_AddStringToObject(json, "wifi_ssid", config.wifi_ssid);
+    char name_esc[64], ssid_esc[68];
+    json_escape(name_esc, sizeof(name_esc), config.treadmill_name);
+    json_escape(ssid_esc, sizeof(ssid_esc), config.wifi_ssid);
 
-    const char *str = cJSON_PrintUnformatted(json);
+    char buf[320];
+    int len = snprintf(buf, sizeof(buf),
+        "{\"treadmill_addr\":\"%s\",\"treadmill_name\":\"%s\","
+        "\"auto_connect\":%s,\"cadence_factor\":%.2f,"
+        "\"cadence_offset\":%.1f,\"speed_is_mph\":%s,"
+        "\"wifi_mode\":%u,\"wifi_ssid\":\"%s\"}",
+        config.treadmill_addr, name_esc,
+        config.auto_connect ? "true" : "false",
+        (double)config.cadence_factor,
+        (double)config.cadence_offset,
+        config.speed_is_mph ? "true" : "false",
+        (unsigned)config.wifi_mode, ssid_esc);
+
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, str, strlen(str));
-    cJSON_free((void *)str);
-    cJSON_Delete(json);
+    httpd_resp_send(req, buf, len);
     return ESP_OK;
 }
 
@@ -443,14 +486,13 @@ static esp_err_t handler_control(httpd_req_t *req)
 
 static esp_err_t handler_control_status(httpd_req_t *req)
 {
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddBoolToObject(json, "has_control", ftms_client_has_control());
-    cJSON_AddBoolToObject(json, "connected", ftms_client_is_connected());
-    const char *str = cJSON_PrintUnformatted(json);
+    char buf[64];
+    int len = snprintf(buf, sizeof(buf),
+        "{\"has_control\":%s,\"connected\":%s}",
+        ftms_client_has_control() ? "true" : "false",
+        ftms_client_is_connected() ? "true" : "false");
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, str, strlen(str));
-    cJSON_free((void *)str);
-    cJSON_Delete(json);
+    httpd_resp_send(req, buf, len);
     return ESP_OK;
 }
 
@@ -570,7 +612,7 @@ esp_err_t web_server_start(void)
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 16;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.stack_size = 8192;
+    config.stack_size = 6144;
 
     httpd_handle_t server = NULL;
     esp_err_t err = httpd_start(&server, &config);

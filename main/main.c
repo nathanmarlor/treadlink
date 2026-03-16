@@ -129,6 +129,7 @@ void app_main(void)
     data_bridge_init(&s_config);
     ESP_ERROR_CHECK(rsc_server_init(on_garmin_connection, rsc_log_handler));
     ESP_ERROR_CHECK(ftms_client_init(on_treadmill_data, on_treadmill_connection));
+    ftms_client_set_log_cb(web_log);
     ble_common_start();
     vTaskDelay(pdMS_TO_TICKS(200)); // wait for NimBLE host sync
     rsc_server_start_advertising();
