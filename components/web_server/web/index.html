@@ -739,10 +739,22 @@ simSetupSlider();
 
 $('cfg-wifi-mode').addEventListener('change', toggleStaFields);
 loadConfig();
-setInterval(poll, 1000);
-setInterval(pollLog, 2000);
+
+let pollTimer = setInterval(poll, 1000);
+let logTimer = setInterval(pollLog, 2000);
 poll();
 pollLog();
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    clearInterval(pollTimer);
+    clearInterval(logTimer);
+  } else {
+    poll(); pollLog();
+    pollTimer = setInterval(poll, 1000);
+    logTimer = setInterval(pollLog, 2000);
+  }
+});
 </script>
 </body>
 </html>

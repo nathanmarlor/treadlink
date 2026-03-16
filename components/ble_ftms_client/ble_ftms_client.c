@@ -38,12 +38,14 @@ static uint16_t s_treadmill_data_val_handle;
 static uint16_t s_control_point_val_handle;
 static bool s_control_acquired;
 static TimerHandle_t s_reconnect_timer;
+static TimerHandle_t s_discovery_timer;
 static uint8_t s_saved_addr[6];
 static uint8_t s_saved_addr_type;
 static bool s_should_reconnect;
 static uint32_t s_reconnect_delay_ms;
 #define RECONNECT_INITIAL_MS  5000
 #define RECONNECT_MAX_MS      60000
+#define DISCOVERY_TIMEOUT_MS  10000
 
 // Scan results
 static ftms_scan_result_t s_scan_results[FTMS_MAX_SCAN_RESULTS];
@@ -146,6 +148,7 @@ static int ftms_on_subscribe(uint16_t conn_handle, const struct ble_gatt_error *
     if (error->status == 0) {
         ESP_LOGI(TAG, "Subscribed to treadmill data notifications");
         set_state(FTMS_STATE_STREAMING);
+        xTimerStop(s_discovery_timer, 0);
 
         // Also subscribe to Control Point indications if available
         if (s_control_point_val_handle != 0) {
@@ -250,11 +253,19 @@ static void reconnect_task(void *arg)
 {
     while (1) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        if (s_should_reconnect) {
+        if (s_should_reconnect && s_state == FTMS_STATE_RECONNECTING) {
             ESP_LOGI(TAG, "Attempting reconnection...");
-            set_state(FTMS_STATE_RECONNECTING);
             ftms_client_connect(s_saved_addr, s_saved_addr_type);
         }
+    }
+}
+
+// Discovery timeout — disconnect if stuck in discovery/subscribe
+static void discovery_timeout_cb(TimerHandle_t timer)
+{
+    if (s_state >= FTMS_STATE_DISCOVERING && s_state <= FTMS_STATE_SUBSCRIBING) {
+        ESP_LOGW(TAG, "GATT discovery timed out, disconnecting");
+        ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
     }
 }
 
@@ -342,7 +353,8 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
         if (event->connect.status == 0) {
             s_conn_handle = event->connect.conn_handle;
             set_state(FTMS_STATE_DISCOVERING);
-            s_reconnect_delay_ms = RECONNECT_INITIAL_MS; // reset backoff
+            s_reconnect_delay_ms = RECONNECT_INITIAL_MS;
+            xTimerStart(s_discovery_timer, 0);
             ESP_LOGI(TAG, "Connected to treadmill (handle=%d)", s_conn_handle);
 
             int rc = ble_gattc_disc_svc_by_uuid(s_conn_handle, &FTMS_SVC_UUID.u,
@@ -372,6 +384,7 @@ static int ftms_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGW(TAG, "Disconnected from treadmill (reason=%d)", event->disconnect.reason);
+        xTimerStop(s_discovery_timer, 0);
         set_state(s_should_reconnect ? FTMS_STATE_RECONNECTING : FTMS_STATE_IDLE);
         s_treadmill_data_val_handle = 0;
         s_control_point_val_handle = 0;
@@ -435,6 +448,8 @@ esp_err_t ftms_client_init(ftms_data_cb_t data_cb, ftms_conn_cb_t conn_cb)
 
     s_reconnect_timer = xTimerCreate("ftms_recon", pdMS_TO_TICKS(RECONNECT_INITIAL_MS),
                                       pdFALSE, NULL, reconnect_timer_cb);
+    s_discovery_timer = xTimerCreate("ftms_disc", pdMS_TO_TICKS(DISCOVERY_TIMEOUT_MS),
+                                      pdFALSE, NULL, discovery_timeout_cb);
 
     xTaskCreate(reconnect_task, "ftms_recon", 3072, NULL, 5, &s_reconnect_task_handle);
 
@@ -512,6 +527,7 @@ esp_err_t ftms_client_disconnect(void)
 {
     s_should_reconnect = false;
     xTimerStop(s_reconnect_timer, 0);
+    xTimerStop(s_discovery_timer, 0);
 
     if (s_state == FTMS_STATE_CONNECTING) {
         // No conn_handle yet — cancel the pending connect

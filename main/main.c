@@ -56,7 +56,11 @@ static void restart_rsc_adv_if_needed(void)
 {
     // FTMS operations (scan, connect, reconnect) stop BLE advertising.
     // Restart RSC advertising so Garmin can still discover/connect.
-    if (!rsc_server_is_connected()) {
+    // Don't restart during active scan/connect — it would cancel the GAP procedure.
+    ftms_state_t state = ftms_client_get_state();
+    if (!rsc_server_is_connected() &&
+        state != FTMS_STATE_SCANNING &&
+        state != FTMS_STATE_CONNECTING) {
         rsc_server_start_advertising();
     }
 }

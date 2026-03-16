@@ -362,6 +362,7 @@ static esp_err_t handler_config_post(httpd_req_t *req)
 
         if (wifi_changed) {
             web_log('I', "WiFi config changed, restarting...");
+            httpd_resp_set_hdr(req, "Connection", "close");
             httpd_resp_sendstr(req, "{\"status\":\"saved\",\"restart\":true}");
             vTaskDelay(pdMS_TO_TICKS(1500));
             esp_restart();
