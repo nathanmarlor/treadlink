@@ -1,0 +1,16 @@
+# PlatformIO
+.pio/
+.vscode/
+
+# ESP-IDF build
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.*.old
+
+# Managed components (fetched by PlatformIO/IDF)
+managed_components/
+dependencies.lock
+
+# OS
+.DS_Store

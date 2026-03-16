@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>TreadLink</title>
+<style>
+:root{--bg:#0f1117;--card:#181c28;--card-border:#252a3a;--accent:#4fc3f7;--accent-dim:rgba(79,195,247,0.12);--text:#e8eaf0;--text-sec:#8890a4;--green:#66bb6a;--red:#ef5350;--yellow:#ffd54f;--radius:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding:16px 16px 32px}
+.header{display:flex;align-items:center;justify-content:center;gap:10px;padding:20px 0 4px}
+.header svg{width:28px;height:28px;fill:var(--accent)}
+.header h1{font-size:1.4em;font-weight:700;letter-spacing:-0.02em}
+.version{text-align:center;font-size:0.65em;color:var(--text-sec);margin-bottom:16px}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--card-border)}
+.conn-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+.conn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.conn-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}.conn-dot.off{background:var(--red);opacity:0.6}
+.conn-label{font-size:0.9em;flex:1}.conn-status{font-size:0.85em;color:var(--text-sec)}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.data-cell{text-align:center;padding:14px 8px;background:var(--bg);border-radius:8px}
+.data-val{font-size:2em;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.data-val.inactive{color:var(--text-sec);opacity:0.4}
+.data-unit{font-size:0.7em;color:var(--text-sec);margin-top:2px;font-weight:500}
+.btn{display:block;width:100%;padding:12px;border:none;border-radius:8px;cursor:pointer;font-size:0.9em;font-weight:600;transition:all 0.15s;text-align:center}
+.btn-accent{background:var(--accent);color:#0f1117}.btn-accent:hover{filter:brightness(1.1)}
+.btn-accent:disabled{background:var(--card-border);color:var(--text-sec);cursor:default}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(239,83,80,0.3)}.btn-danger:hover{background:rgba(239,83,80,0.08)}
+.btn-sm{width:auto;padding:6px 16px;font-size:0.8em;display:inline-block}
+.btn-link{background:none;border:none;color:var(--text-sec);font-size:0.8em;cursor:pointer;padding:8px 0;text-decoration:underline}
+.scan-list{list-style:none;margin-top:10px}
+.scan-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--card-border);gap:12px}
+.scan-item:last-child{border-bottom:none}
+.scan-info{flex:1;min-width:0}
+.scan-name{font-size:0.9em;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scan-meta{font-size:0.75em;color:var(--text-sec);margin-top:2px}
+.rssi-bar{display:inline-flex;gap:1px;align-items:flex-end}.rssi-bar i{display:block;width:3px;background:var(--text-sec);border-radius:1px;opacity:0.25}
+.rssi-bar i.on{opacity:1;background:var(--accent)}
+.connected-info{text-align:center;padding:8px 0}
+.connected-name{font-size:1em;font-weight:600;margin-bottom:2px}
+.connected-addr{font-size:0.75em;color:var(--text-sec)}
+.section-label{font-size:0.8em;font-weight:500;color:var(--text-sec);margin-bottom:6px;margin-top:14px}
+.section-label:first-child{margin-top:0}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--card-border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.9em;outline:none;transition:border-color 0.15s}
+input:focus,select:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-label{font-size:0.72em;color:var(--text-sec);margin-bottom:4px}
+.check-row{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:0.88em}
+.check-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:0.85em;font-weight:500;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:10}
+.toast.show{opacity:1}.toast.ok{background:#1b5e20;color:#a5d6a7}.toast.err{background:#b71c1c;color:#ef9a9a}
+.log-box{background:var(--bg);border:1px solid var(--card-border);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;font-family:'SF Mono',Menlo,'Cascadia Code',Consolas,monospace;font-size:0.72em;line-height:1.6}
+.log-box div{color:var(--text-sec)}.log-box .log-w{color:var(--yellow)}.log-box .log-e{color:var(--red)}
+.collapse-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;color:var(--text-sec);cursor:pointer;padding:0;font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
+.collapse-btn svg{width:16px;height:16px;fill:var(--text-sec);transition:transform 0.2s}
+.collapse-btn.open svg{transform:rotate(180deg)}
+.collapse-content{max-height:0;overflow:hidden;transition:max-height 0.3s}
+.collapse-content.open{max-height:600px}
+.ctrl-group{}
+.ctrl-label{font-size:0.72em;color:var(--text-sec);font-weight:500;margin-bottom:6px}
+.ctrl-label span{color:var(--text-sec)}
+.ctrl-row{display:flex;align-items:center;gap:8px}
+.ctrl-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--card-border);background:var(--bg);color:var(--text);font-size:1.3em;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent;user-select:none}
+.ctrl-btn:active{background:var(--accent);color:#0f1117;border-color:var(--accent)}
+.ctrl-val-wrap{flex:1;text-align:center;position:relative}
+.ctrl-val{font-size:2em;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.ctrl-slider{width:100%;margin-top:4px;accent-color:var(--accent);height:4px;-webkit-appearance:none;appearance:none;background:var(--card-border);border-radius:2px;outline:none}
+.ctrl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer}
+.ctrl-presets{display:flex;gap:6px;margin-top:8px}
+.ctrl-preset{flex:1;padding:6px 0;border:1px solid var(--card-border);border-radius:6px;background:var(--bg);color:var(--text-sec);font-size:0.72em;font-weight:600;cursor:pointer;text-align:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent}
+.ctrl-preset:active,.ctrl-preset.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.ctrl-stop-btn{padding:12px 20px;border:2px solid var(--red);border-radius:8px;background:rgba(239,83,80,0.1);color:var(--red);font-size:0.95em;font-weight:800;letter-spacing:0.05em;cursor:pointer;transition:all 0.12s;-webkit-tap-highlight-color:transparent}
+.ctrl-stop-btn:active{background:var(--red);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <svg viewBox="0 0 24 24"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+  <h1>TreadLink</h1>
+</div>
+<div class="version">v1.0.0</div>
+
+<div class="card">
+  <div class="conn-row">
+    <span class="conn-dot" id="dot-tm"></span>
+    <span class="conn-label">Treadmill</span>
+    <span class="conn-status" id="st-tm">Disconnected</span>
+  </div>
+  <div class="conn-row">
+    <span class="conn-dot" id="dot-gm"></span>
+    <span class="conn-label">Garmin Watch</span>
+    <span class="conn-status" id="st-gm">Disconnected</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="data-grid">
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-speed">--</div>
+      <div class="data-unit" id="unit-speed">km/h</div>
+    </div>
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-cadence">--</div>
+      <div class="data-unit">steps/min</div>
+    </div>
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-distance">--</div>
+      <div class="data-unit" id="unit-distance">metres</div>
+    </div>
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-incline">--</div>
+      <div class="data-unit">% incline</div>
+    </div>
+  </div>
+</div>
+
+<!-- Treadmill card: swaps between scan view and connected view -->
+<div class="card" id="tm-card">
+  <!-- Disconnected: scan UI -->
+  <div id="tm-disconnected">
+    <button class="btn btn-accent" id="btn-scan" onclick="doScan()">Scan for Treadmills</button>
+    <ul class="scan-list" id="scan-list"></ul>
+  </div>
+  <!-- Connected: treadmill info -->
+  <div id="tm-connected" style="display:none">
+    <div class="connected-info">
+      <div class="connected-name" id="tm-name"></div>
+      <div class="connected-addr" id="tm-addr"></div>
+    </div>
+    <button class="btn btn-danger" onclick="doDisconnect()" style="margin-top:12px">Disconnect</button>
+    <button class="btn-link" onclick="doDisconnectAndScan()" style="display:block;text-align:center;width:100%">Switch treadmill</button>
+  </div>
+</div>
+
+<div class="card">
+  <button class="collapse-btn" id="settings-toggle" onclick="toggleSettings()">
+    Settings
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </button>
+  <div class="collapse-content" id="settings-body">
+    <div style="padding-top:12px">
+      <div class="section-label">Cadence Estimation</div>
+      <div class="form-row">
+        <div>
+          <div class="form-label">Speed multiplier</div>
+          <input type="number" id="cfg-factor" step="0.1" min="0" max="5" placeholder="1.4">
+        </div>
+        <div>
+          <div class="form-label">Base cadence (spm)</div>
+          <input type="number" id="cfg-offset" step="1" min="0" max="200" placeholder="120">
+        </div>
+      </div>
+
+      <div class="section-label">Network</div>
+      <select id="cfg-wifi-mode">
+        <option value="0">WiFi Access Point</option>
+        <option value="1">Join Existing Network</option>
+      </select>
+      <div id="sta-fields" style="display:none;margin-top:8px">
+        <input type="text" id="cfg-ssid" maxlength="32" placeholder="Network name" style="margin-bottom:8px">
+        <input type="password" id="cfg-pass" maxlength="64" placeholder="Password">
+      </div>
+
+      <div class="section-label">Options</div>
+      <label class="check-row"><input type="checkbox" id="cfg-mph"><span>Treadmill reports speed in mph</span></label>
+      <label class="check-row"><input type="checkbox" id="cfg-auto"><span>Auto-connect on boot</span></label>
+
+      <button class="btn btn-accent" onclick="saveConfig()" style="margin-top:14px">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <button class="collapse-btn" id="log-toggle" onclick="toggleLog()">
+    Event Log
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </button>
+  <div class="collapse-content" id="log-body">
+    <div class="log-box" id="log-box" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="card" id="control-card" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-sec)">Treadmill Control</div>
+    <div style="font-size:0.7em;color:var(--green)" id="ctrl-status">Ready</div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Speed <span id="ctrl-speed-unit">km/h</span></div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="ctrlAdj('speed',-0.5)">-</button>
+      <div class="ctrl-val-wrap">
+        <input type="range" id="ctrl-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
+        <div class="ctrl-val" id="ctrl-speed-val">0.0</div>
+      </div>
+      <button class="ctrl-btn" onclick="ctrlAdj('speed',0.5)">+</button>
+    </div>
+    <div class="ctrl-presets" id="speed-presets"></div>
+  </div>
+
+  <div class="ctrl-group" style="margin-top:14px">
+    <div class="ctrl-label">Incline %</div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="ctrlAdj('incline',-0.5)">-</button>
+      <div class="ctrl-val-wrap">
+        <input type="range" id="ctrl-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
+        <div class="ctrl-val" id="ctrl-incline-val">0.0</div>
+      </div>
+      <button class="ctrl-btn" onclick="ctrlAdj('incline',0.5)">+</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn btn-accent" id="ctrl-start-btn" onclick="ctrlStart()" style="flex:1">Start</button>
+    <button class="ctrl-stop-btn" onclick="ctrlStop()">STOP</button>
+  </div>
+</div>
+
+<div class="card">
+  <button class="collapse-btn" id="diag-toggle" onclick="toggleDiag()">
+    Diagnostics
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </button>
+  <div class="collapse-content" id="diag-body">
+    <div style="padding-top:12px">
+      <div class="section-label">Simulate treadmill data (no treadmill needed)</div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Speed <span id="sim-speed-unit">km/h</span></div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn" onclick="simAdj('speed',-0.5)">-</button>
+          <div class="ctrl-val-wrap">
+            <input type="range" id="sim-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
+            <div class="ctrl-val" id="sim-speed-val">0.0</div>
+          </div>
+          <button class="ctrl-btn" onclick="simAdj('speed',0.5)">+</button>
+        </div>
+      </div>
+      <div class="ctrl-group" style="margin-top:10px">
+        <div class="ctrl-label">Incline %</div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn" onclick="simAdj('incline',-0.5)">-</button>
+          <div class="ctrl-val-wrap">
+            <input type="range" id="sim-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
+            <div class="ctrl-val" id="sim-incline-val">0.0</div>
+          </div>
+          <button class="ctrl-btn" onclick="simAdj('incline',0.5)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn btn-accent" id="sim-toggle-btn" onclick="simToggle()" style="flex:1">Start Simulating</button>
+        <button class="btn btn-danger" onclick="simStop()" style="flex:1">Stop</button>
+      </div>
+      <div style="font-size:0.72em;color:var(--text-sec);margin-top:8px;text-align:center" id="sim-status">Inactive</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let lastLogId = 0;
+let isMph = false;
+let tmConnected = false;
+
+function rssiIcon(rssi) {
+  const bars = rssi > -50 ? 4 : rssi > -65 ? 3 : rssi > -80 ? 2 : 1;
+  let h = '';
+  for (let i = 1; i <= 4; i++) h += '<i style="height:' + (i*3+2) + 'px" class="' + (i<=bars?'on':'') + '"></i>';
+  return '<span class="rssi-bar">' + h + '</span>';
+}
+
+function setVal(id, val, active) {
+  const el = $(id);
+  el.textContent = val;
+  el.className = active ? 'data-val' : 'data-val inactive';
+}
+
+function updateStatus(d) {
+  tmConnected = d.treadmill_connected;
+  isMph = d.speed_is_mph;
+
+  $('dot-tm').className = 'conn-dot ' + (d.treadmill_connected ? 'on' : 'off');
+  $('st-tm').textContent = d.treadmill_connected ? 'Connected' : 'Disconnected';
+  $('dot-gm').className = 'conn-dot ' + (d.garmin_connected ? 'on' : 'off');
+  $('st-gm').textContent = d.garmin_connected ? 'Connected' : 'Disconnected';
+
+  // Treadmill card: swap views
+  $('tm-disconnected').style.display = d.treadmill_connected ? 'none' : '';
+  $('tm-connected').style.display = d.treadmill_connected ? '' : 'none';
+
+  if (d.treadmill_connected) {
+    const name = d.treadmill_name || 'Treadmill';
+    $('tm-name').textContent = name;
+    $('tm-addr').textContent = d.treadmill_addr || '';
+    $('scan-list').innerHTML = '';
+  }
+
+  // Show control panel when treadmill supports it
+  const showCtrl = d.treadmill_connected && d.has_control;
+  $('control-card').style.display = showCtrl ? '' : 'none';
+  if (showCtrl) {
+    syncControlFromStatus(d);
+  } else if (!d.treadmill_connected) {
+    // Reset control state on disconnect
+    setCtrlSpeed(0);
+    setCtrlIncline(0);
+    $('ctrl-start-btn').textContent = 'Start';
+    $('ctrl-start-btn').style.background = '';
+  }
+
+  // Data grid: show values when connected, dashes when not
+  if (d.treadmill_connected) {
+    if (isMph) {
+      setVal('val-speed', (d.speed_kmh / 1.60934).toFixed(1), true);
+      $('unit-speed').textContent = 'mph';
+      const mi = (d.distance_m / 1609.344);
+      setVal('val-distance', mi < 10 ? mi.toFixed(2) : mi.toFixed(1), true);
+      $('unit-distance').textContent = 'miles';
+    } else {
+      setVal('val-speed', d.speed_kmh.toFixed(1), true);
+      $('unit-speed').textContent = 'km/h';
+      const km = d.distance_m / 1000;
+      if (d.distance_m < 1000) {
+        setVal('val-distance', d.distance_m, true);
+        $('unit-distance').textContent = 'metres';
+      } else {
+        setVal('val-distance', km.toFixed(2), true);
+        $('unit-distance').textContent = 'km';
+      }
+    }
+    setVal('val-cadence', d.cadence_spm, true);
+    setVal('val-incline', d.incline_pct.toFixed(1), true);
+  } else {
+    setVal('val-speed', '--', false);
+    setVal('val-cadence', '--', false);
+    setVal('val-distance', '--', false);
+    setVal('val-incline', '--', false);
+    $('unit-speed').textContent = isMph ? 'mph' : 'km/h';
+    $('unit-distance').textContent = isMph ? 'miles' : 'metres';
+  }
+}
+
+async function poll() {
+  try { const r = await fetch('/api/status'); if (r.ok) updateStatus(await r.json()); } catch(e) {}
+}
+
+async function pollLog() {
+  try {
+    const r = await fetch('/api/log?after=' + lastLogId);
+    if (!r.ok) return;
+    const entries = await r.json();
+    const box = $('log-box');
+    entries.forEach(e => {
+      const div = document.createElement('div');
+      div.className = e.level === 'W' ? 'log-w' : e.level === 'E' ? 'log-e' : '';
+      div.textContent = e.text;
+      box.appendChild(div);
+      lastLogId = e.id;
+    });
+    if (entries.length > 0) box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+}
+
+async function doScan() {
+  $('btn-scan').disabled = true;
+  $('btn-scan').textContent = 'Scanning\u2026';
+  $('scan-list').innerHTML = '';
+  try {
+    await fetch('/api/scan', {method:'POST'});
+    for (let i = 0; i < 5; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const r = await fetch('/api/scan/results');
+      if (!r.ok) continue;
+      const results = await r.json();
+      $('scan-list').innerHTML = '';
+      if (results.length === 0 && i < 4) continue;
+      results.forEach(d => {
+        const li = document.createElement('li');
+        li.className = 'scan-item';
+        const name = d.name || 'Unknown Device';
+        li.innerHTML = '<div class="scan-info"><span class="scan-name">' + esc(name) + '</span>' +
+          '<span class="scan-meta">' + esc(d.addr) + ' &middot; ' + rssiIcon(d.rssi) + ' ' + d.rssi + ' dBm</span></div>' +
+          '<button class="btn btn-accent btn-sm btn-connect">Connect</button>';
+        li.querySelector('.btn-connect').addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          this.disabled = true;
+          this.textContent = 'Connecting\u2026';
+          doConnect(d.addr, d.addr_type, name);
+        });
+        $('scan-list').appendChild(li);
+      });
+      if (results.length > 0) break;
+    }
+  } catch(e) {}
+  $('btn-scan').disabled = false;
+  $('btn-scan').textContent = 'Scan for Treadmills';
+}
+
+async function doConnect(addr, addrType, name) {
+  try {
+    await fetch('/api/connect', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({addr: addr, addr_type: addrType, name: name || ''})
+    });
+  } catch(e) {}
+}
+
+async function doDisconnect() {
+  try { await fetch('/api/disconnect', {method:'POST'}); } catch(e) {}
+}
+
+async function doDisconnectAndScan() {
+  await doDisconnect();
+  // Wait for disconnect to take effect
+  await new Promise(r => setTimeout(r, 500));
+  doScan();
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    if (!r.ok) return;
+    const c = await r.json();
+    $('cfg-factor').value = c.cadence_factor;
+    $('cfg-offset').value = c.cadence_offset;
+    $('cfg-wifi-mode').value = c.wifi_mode;
+    $('cfg-ssid').value = c.wifi_ssid || '';
+    $('cfg-pass').value = '';
+    $('cfg-mph').checked = c.speed_is_mph;
+    $('cfg-auto').checked = c.auto_connect;
+    toggleStaFields();
+  } catch(e) {}
+}
+
+async function saveConfig() {
+  const body = {
+    cadence_factor: parseFloat($('cfg-factor').value),
+    cadence_offset: parseFloat($('cfg-offset').value),
+    wifi_mode: parseInt($('cfg-wifi-mode').value),
+    wifi_ssid: $('cfg-ssid').value,
+    wifi_pass: $('cfg-pass').value,
+    speed_is_mph: $('cfg-mph').checked,
+    auto_connect: $('cfg-auto').checked
+  };
+  try {
+    const r = await fetch('/api/config', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.restart) {
+      showToast('Settings saved, restarting...', true);
+    } else {
+      showToast(r.ok ? 'Settings saved' : 'Save failed', r.ok);
+    }
+  } catch(e) { showToast('Save failed', false); }
+}
+
+function showToast(msg, ok) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (ok ? 'ok' : 'err');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+function toggleStaFields() {
+  $('sta-fields').style.display = $('cfg-wifi-mode').value === '1' ? '' : 'none';
+}
+
+function toggleSettings() {
+  $('settings-body').classList.toggle('open');
+  $('settings-toggle').classList.toggle('open');
+}
+
+function toggleLog() {
+  $('log-body').classList.toggle('open');
+  $('log-toggle').classList.toggle('open');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// --- Treadmill Control ---
+// Internal state always in km/h — converted to display units for UI
+let ctrlSpeedKmh = 0;
+let ctrlIncline = 0;
+let ctrlUserDragging = false;
+let ctrlLastMph = null; // track unit changes to rebuild UI
+
+const KMH_TO_MPH = 1 / 1.60934;
+const MPH_TO_KMH = 1.60934;
+
+// Presets defined in km/h, displayed in user's units
+const speedPresets = [
+  {label:'Walk', kmh:4}, {label:'Jog', kmh:8}, {label:'Run', kmh:12}, {label:'Sprint', kmh:16}
+];
+
+function ctrlDisplaySpeed(kmh) { return isMph ? kmh * KMH_TO_MPH : kmh; }
+function ctrlToKmh(display) { return isMph ? display * MPH_TO_KMH : display; }
+function ctrlSpeedUnit() { return isMph ? 'mph' : 'km/h'; }
+function ctrlMaxSpeed() { return isMph ? 12.5 : 20; }
+function ctrlSpeedStep() { return 0.5; }
+
+function ctrlSetupSlider() {
+  const sl = $('ctrl-speed');
+  sl.min = 0;
+  sl.max = ctrlMaxSpeed();
+  sl.step = ctrlSpeedStep();
+  $('ctrl-speed-unit').textContent = ctrlSpeedUnit();
+}
+
+function buildPresets() {
+  const c = $('speed-presets');
+  c.innerHTML = '';
+  speedPresets.forEach(p => {
+    const displayVal = ctrlDisplaySpeed(p.kmh);
+    const btn = document.createElement('button');
+    btn.className = 'ctrl-preset';
+    btn.textContent = p.label + ' ' + (isMph ? displayVal.toFixed(1) : displayVal.toFixed(0));
+    btn.addEventListener('click', function() {
+      setCtrlSpeed(p.kmh);
+      sendControl({action:'set_speed', speed_kmh: ctrlDisplaySpeed(p.kmh)});
+    });
+    c.appendChild(btn);
+  });
+}
+
+function setCtrlSpeed(kmh) {
+  ctrlSpeedKmh = kmh;
+  const display = ctrlDisplaySpeed(kmh);
+  $('ctrl-speed').value = display;
+  $('ctrl-speed-val').textContent = display.toFixed(1);
+  $('ctrl-speed-unit').textContent = ctrlSpeedUnit();
+  // Highlight matching preset
+  document.querySelectorAll('.ctrl-preset').forEach((el, i) => {
+    el.classList.toggle('active', Math.abs(speedPresets[i].kmh - kmh) < 0.3);
+  });
+}
+
+function setCtrlIncline(v) {
+  ctrlIncline = v;
+  $('ctrl-incline').value = v;
+  $('ctrl-incline-val').textContent = v.toFixed(1);
+}
+
+function ctrlAdj(type, delta) {
+  if (type === 'speed') {
+    // delta is in display units (0.5 mph or 0.5 km/h)
+    const curDisplay = ctrlDisplaySpeed(ctrlSpeedKmh);
+    const newDisplay = Math.max(0, Math.min(ctrlMaxSpeed(), curDisplay + delta));
+    const newKmh = ctrlToKmh(newDisplay);
+    setCtrlSpeed(newKmh);
+    sendControl({action:'set_speed', speed_kmh: ctrlDisplaySpeed(newKmh)});
+  } else {
+    const v = Math.max(-5, Math.min(15, ctrlIncline + delta));
+    setCtrlIncline(v);
+    sendControl({action:'set_incline', incline_pct: v});
+  }
+}
+
+$('ctrl-speed').addEventListener('input', function() {
+  ctrlUserDragging = true;
+  const displayVal = parseFloat(this.value);
+  ctrlSpeedKmh = ctrlToKmh(displayVal);
+  $('ctrl-speed-val').textContent = displayVal.toFixed(1);
+  // Highlight matching preset
+  document.querySelectorAll('.ctrl-preset').forEach((el, i) => {
+    el.classList.toggle('active', Math.abs(speedPresets[i].kmh - ctrlSpeedKmh) < 0.3);
+  });
+});
+$('ctrl-speed').addEventListener('change', function() {
+  ctrlUserDragging = false;
+  sendControl({action:'set_speed', speed_kmh: ctrlDisplaySpeed(ctrlSpeedKmh)});
+});
+
+$('ctrl-incline').addEventListener('input', function() {
+  ctrlUserDragging = true;
+  setCtrlIncline(parseFloat(this.value));
+});
+$('ctrl-incline').addEventListener('change', function() {
+  ctrlUserDragging = false;
+  sendControl({action:'set_incline', incline_pct: ctrlIncline});
+});
+
+async function sendControl(body) {
+  const st = $('ctrl-status');
+  try {
+    const r = await fetch('/api/control', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.error === 'no_control') {
+      st.textContent = 'Not supported'; st.style.color = 'var(--red)';
+    } else if (d.error) {
+      st.textContent = 'Failed'; st.style.color = 'var(--red)';
+    } else {
+      st.textContent = 'Sent'; st.style.color = 'var(--green)';
+    }
+  } catch(e) {
+    st.textContent = 'Error'; st.style.color = 'var(--red)';
+  }
+}
+
+function ctrlStart() {
+  sendControl({action:'start'});
+  $('ctrl-start-btn').textContent = 'Running';
+  $('ctrl-start-btn').style.background = 'var(--green)';
+}
+function ctrlStop() {
+  sendControl({action:'stop'});
+  setCtrlSpeed(0);
+  $('ctrl-start-btn').textContent = 'Start';
+  $('ctrl-start-btn').style.background = '';
+}
+
+// Sync control sliders from live treadmill data
+function syncControlFromStatus(d) {
+  if (!d.has_control || ctrlUserDragging) return;
+
+  // Rebuild presets and slider if units changed
+  if (ctrlLastMph !== isMph) {
+    ctrlLastMph = isMph;
+    ctrlSetupSlider();
+    buildPresets();
+    setCtrlSpeed(ctrlSpeedKmh); // re-render display
+  }
+
+  if (d.treadmill_connected && d.speed_kmh > 0) {
+    const step = isMph ? 0.5 * MPH_TO_KMH : 0.5;
+    const liveKmh = Math.round(d.speed_kmh / step) * step;
+    if (Math.abs(liveKmh - ctrlSpeedKmh) > step * 1.2) {
+      setCtrlSpeed(liveKmh);
+    }
+    if (d.incline_pct !== undefined) {
+      const liveInc = Math.round(d.incline_pct * 2) / 2;
+      if (Math.abs(liveInc - ctrlIncline) > 0.6) {
+        setCtrlIncline(liveInc);
+      }
+    }
+    $('ctrl-start-btn').textContent = 'Running';
+    $('ctrl-start-btn').style.background = 'var(--green)';
+  }
+}
+
+ctrlSetupSlider();
+buildPresets();
+
+// --- Simulate ---
+let simSpeedKmh = 0;
+let simIncline = 0;
+let simActive = false;
+let simInterval = null;
+
+function toggleDiag() {
+  $('diag-body').classList.toggle('open');
+  $('diag-toggle').classList.toggle('open');
+}
+
+function simSetupSlider() {
+  const sl = $('sim-speed');
+  sl.min = 0;
+  sl.max = ctrlMaxSpeed();
+  sl.step = ctrlSpeedStep();
+  $('sim-speed-unit').textContent = ctrlSpeedUnit();
+}
+
+function simUpdateDisplay() {
+  const display = ctrlDisplaySpeed(simSpeedKmh);
+  $('sim-speed').value = display;
+  $('sim-speed-val').textContent = display.toFixed(1);
+  $('sim-speed-unit').textContent = ctrlSpeedUnit();
+  $('sim-incline').value = simIncline;
+  $('sim-incline-val').textContent = simIncline.toFixed(1);
+}
+
+function simAdj(type, delta) {
+  if (type === 'speed') {
+    const curDisplay = ctrlDisplaySpeed(simSpeedKmh);
+    const newDisplay = Math.max(0, Math.min(ctrlMaxSpeed(), curDisplay + delta));
+    simSpeedKmh = ctrlToKmh(newDisplay);
+    simUpdateDisplay();
+  } else {
+    simIncline = Math.max(-5, Math.min(15, simIncline + delta));
+    simUpdateDisplay();
+  }
+}
+
+$('sim-speed').addEventListener('input', function() {
+  simSpeedKmh = ctrlToKmh(parseFloat(this.value));
+  $('sim-speed-val').textContent = parseFloat(this.value).toFixed(1);
+});
+$('sim-incline').addEventListener('input', function() {
+  simIncline = parseFloat(this.value);
+  $('sim-incline-val').textContent = simIncline.toFixed(1);
+});
+
+async function simSend() {
+  try {
+    await fetch('/api/simulate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({speed_kmh: ctrlDisplaySpeed(simSpeedKmh), incline_pct: simIncline})
+    });
+  } catch(e) {}
+}
+
+function simToggle() {
+  if (simActive) { simStop(); return; }
+  simActive = true;
+  $('sim-toggle-btn').textContent = 'Simulating...';
+  $('sim-toggle-btn').style.background = 'var(--green)';
+  $('sim-toggle-btn').style.color = '#0f1117';
+  $('sim-status').textContent = 'Active - sending to Garmin';
+  $('sim-status').style.color = 'var(--green)';
+  simSend();
+  simInterval = setInterval(simSend, 1000);
+}
+
+function simStop() {
+  simActive = false;
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  $('sim-toggle-btn').textContent = 'Start Simulating';
+  $('sim-toggle-btn').style.background = '';
+  $('sim-toggle-btn').style.color = '';
+  $('sim-status').textContent = 'Inactive';
+  $('sim-status').style.color = 'var(--text-sec)';
+  // Send zero speed to stop
+  simSpeedKmh = 0; simIncline = 0;
+  simUpdateDisplay();
+  fetch('/api/simulate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({speed_kmh: 0, incline_pct: 0})
+  }).catch(()=>{});
+}
+
+simSetupSlider();
+
+$('cfg-wifi-mode').addEventListener('change', toggleStaFields);
+loadConfig();
+setInterval(poll, 1000);
+setInterval(pollLog, 2000);
+poll();
+pollLog();
+</script>
+</body>
+</html>
