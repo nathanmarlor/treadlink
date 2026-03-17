@@ -83,10 +83,33 @@ jobs:
           EOF
 
       - name: Commit updated manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          git add docs/manifest.json
-          git diff --cached --quiet || git commit -m "Update flash site manifest for ${GITHUB_REF_NAME}"
-          git push
+          VERSION=${GITHUB_REF_NAME}
+          BASE_URL="https://github.com/nathanmarlor/treadlink/releases/download/${VERSION}"
+          MANIFEST=$(cat <<MEOF
+          {
+            "name": "TreadLink",
+            "version": "${VERSION}",
+            "builds": [
+              {
+                "chipFamily": "ESP32-S3",
+                "parts": [
+                  { "path": "${BASE_URL}/treadlink-bootloader.bin", "offset": 0 },
+                  { "path": "${BASE_URL}/treadlink-partitions.bin", "offset": 32768 },
+                  { "path": "${BASE_URL}/treadlink-firmware.bin", "offset": 65536 }
+                ]
+              }
+            ]
+          }
+          MEOF
+          )
+          # Use GitHub API to update file directly on main
+          EXISTING=$(gh api repos/nathanmarlor/treadlink/contents/docs/manifest.json --jq .sha 2>/dev/null || echo "")
+          echo "${MANIFEST}" | gh api repos/nathanmarlor/treadlink/contents/docs/manifest.json \
+            -X PUT \
+            -f message="Update flash site manifest for ${VERSION}" \
+            -f content="$(echo "${MANIFEST}" | base64 -w0)" \
+            -f branch=main \
+            ${EXISTING:+-f sha="${EXISTING}"}
