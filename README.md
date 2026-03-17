@@ -4,6 +4,14 @@ ESP32-S3 firmware that bridges a BLE treadmill (FTMS) to a Garmin watch by prese
 
 Built for the [Seeed Studio XIAO ESP32-S3](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html).
 
+## Install
+
+Flash directly from your browser — no tools required:
+
+**[Install TreadLink](https://nathanmarlor.github.io/treadlink/)** (Chrome/Edge, USB-C cable)
+
+Or download the binaries from the [latest release](https://github.com/nathanmarlor/treadlink/releases/latest).
+
 ## What it does
 
 Most Garmin watches don't natively support BLE treadmill data (FTMS). TreadLink sits between your treadmill and watch:
@@ -59,7 +67,7 @@ pio device monitor
 
 ## Setup
 
-1. Flash the firmware to your XIAO ESP32-S3
+1. Flash firmware via the [web installer](https://nathanmarlor.github.io/treadlink/) or PlatformIO
 2. Connect to the **TreadLink** WiFi AP (password: `treadlink`)
 3. Browse to `192.168.4.1`
 4. Scan for your treadmill and connect
@@ -76,7 +84,7 @@ The web interface provides:
 - **Treadmill scan & connect** — discover and pair BLE FTMS treadmills
 - **Treadmill control** — speed/incline sliders, presets, start/stop (when supported)
 - **Configuration** — WiFi mode, speed units, cadence estimation parameters
-- **Diagnostics** — simulate treadmill data for testing without hardware
+- **Simulate** — test Garmin integration without a treadmill
 - **Log viewer** — real-time event log for debugging
 
 ## Architecture
