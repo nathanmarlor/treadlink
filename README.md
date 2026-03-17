@@ -1,5 +1,7 @@
 # TreadLink
 
+[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
+
 ESP32-S3 firmware that bridges a BLE treadmill (FTMS) to a Garmin watch by presenting as a Running Speed and Cadence (RSC) footpod sensor.
 
 Built for the [Seeed Studio XIAO ESP32-S3](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html).
@@ -112,6 +114,15 @@ main/
 | Double blink | Treadmill connected, waiting for Garmin |
 | Solid on | Both connected — data flowing |
 
+## Support
+
+If you find this useful, consider buying me a coffee:
+
+[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
+
 ## License
 
 MIT
+
+[buymecoffee]: https://www.buymeacoffee.com/nathanmarlor
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
