@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release
+          cp .pio/build/seeed_xiao_esp32s3/firmware.bin release/treadlink-firmware.bin
+          cp .pio/build/seeed_xiao_esp32s3/bootloader.bin release/treadlink-bootloader.bin
+          cp .pio/build/seeed_xiao_esp32s3/partitions.bin release/treadlink-partitions.bin
+
+      - name: Generate manifest for web flasher
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          cat > release/manifest.json << EOF
+          {
+            "name": "TreadLink",
+            "version": "${VERSION}",
+            "builds": [
+              {
+                "chipFamily": "ESP32-S3",
+                "parts": [
+                  { "path": "treadlink-bootloader.bin", "offset": 0 },
+                  { "path": "treadlink-partitions.bin", "offset": 32768 },
+                  { "path": "treadlink-firmware.bin", "offset": 65536 }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/treadlink-firmware.bin
+            release/treadlink-bootloader.bin
+            release/treadlink-partitions.bin
+            release/manifest.json
+
+      - name: Update flash site manifest
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          BASE_URL="https://github.com/nathanmarlor/treadlink/releases/download/${VERSION}"
+          cat > docs/manifest.json << EOF
+          {
+            "name": "TreadLink",
+            "version": "${VERSION}",
+            "builds": [
+              {
+                "chipFamily": "ESP32-S3",
+                "parts": [
+                  { "path": "${BASE_URL}/treadlink-bootloader.bin", "offset": 0 },
+                  { "path": "${BASE_URL}/treadlink-partitions.bin", "offset": 32768 },
+                  { "path": "${BASE_URL}/treadlink-firmware.bin", "offset": 65536 }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Commit updated manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git add docs/manifest.json
+          git diff --cached --quiet || git commit -m "Update flash site manifest for ${GITHUB_REF_NAME}"
+          git push

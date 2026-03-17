@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TreadLink - Web Flasher</title>
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<style>
+:root{--bg:#0f1117;--card:#181c28;--card-border:#252a3a;--accent:#4fc3f7;--text:#e8eaf0;--text-sec:#8890a4;--green:#66bb6a;--radius:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.container{max-width:560px;width:100%}
+.header{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px}
+.header svg{width:36px;height:36px;fill:var(--accent)}
+.header h1{font-size:1.8em;font-weight:700;letter-spacing:-0.02em}
+.subtitle{text-align:center;color:var(--text-sec);font-size:0.95em;margin-bottom:32px}
+.card{background:var(--card);border-radius:var(--radius);padding:24px;margin-bottom:16px;border:1px solid var(--card-border)}
+.card h2{font-size:1.1em;font-weight:600;margin-bottom:12px}
+.card p{font-size:0.9em;color:var(--text-sec);line-height:1.6;margin-bottom:12px}
+.card ul{font-size:0.9em;color:var(--text-sec);line-height:1.8;padding-left:20px;margin-bottom:12px}
+.flash-container{text-align:center;padding:20px 0}
+esp-web-install-button{--ewi-install-button-color:var(--accent);--ewi-install-button-text-color:#0f1117}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#0f1117;font-size:0.75em;font-weight:700;margin-right:8px;flex-shrink:0}
+.step{display:flex;align-items:flex-start;margin-bottom:10px;font-size:0.9em;color:var(--text-sec);line-height:1.6}
+.step span{padding-top:1px}
+.note{font-size:0.8em;color:var(--text-sec);background:var(--bg);border-radius:8px;padding:12px;margin-top:12px;line-height:1.6}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.badge{display:inline-block;font-size:0.7em;font-weight:600;background:var(--accent);color:#0f1117;padding:2px 8px;border-radius:4px;margin-left:6px;vertical-align:middle}
+.footer{text-align:center;margin-top:32px;font-size:0.8em;color:var(--text-sec);line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <svg viewBox="0 0 24 24"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+    <h1>TreadLink</h1>
+  </div>
+  <p class="subtitle">Treadmill-to-Garmin bridge for XIAO ESP32-S3</p>
+
+  <div class="card">
+    <h2>Flash Firmware</h2>
+    <p>Connect your XIAO ESP32-S3 via USB and click the button below to flash the latest TreadLink firmware directly from your browser.</p>
+
+    <div class="flash-container">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate" style="background:var(--accent);color:#0f1117;border:none;padding:14px 32px;border-radius:8px;font-size:1em;font-weight:600;cursor:pointer;transition:filter 0.15s">
+          Install TreadLink
+        </button>
+        <span slot="unsupported">
+          <p style="color:var(--text-sec);font-size:0.9em">Your browser does not support Web Serial.<br>Please use Chrome or Edge on desktop.</p>
+        </span>
+        <span slot="not-allowed">
+          <p style="color:var(--text-sec);font-size:0.9em">Serial access was denied. Please grant permission and try again.</p>
+        </span>
+      </esp-web-install-button>
+    </div>
+
+    <div class="note">
+      Requires <strong>Chrome</strong> or <strong>Edge</strong> on desktop. Web Serial is not supported on mobile browsers or Firefox/Safari.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Setup Guide</h2>
+    <div class="step"><span class="step-num">1</span><span>Flash the firmware using the button above</span></div>
+    <div class="step"><span class="step-num">2</span><span>Connect to the <strong>TreadLink</strong> WiFi network (password: <code>treadlink</code>)</span></div>
+    <div class="step"><span class="step-num">3</span><span>Open <a href="http://192.168.4.1">192.168.4.1</a> in your browser</span></div>
+    <div class="step"><span class="step-num">4</span><span>Scan and connect to your treadmill</span></div>
+    <div class="step"><span class="step-num">5</span><span>On your Garmin watch: Settings &rarr; Sensors &rarr; Add &rarr; search for <strong>TreadLink</strong></span></div>
+    <div class="step"><span class="step-num">6</span><span>Start a treadmill activity on your watch and run!</span></div>
+  </div>
+
+  <div class="card">
+    <h2>What You Need</h2>
+    <ul>
+      <li><a href="https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html">Seeed Studio XIAO ESP32-S3</a> (with external antenna recommended)</li>
+      <li>A Bluetooth treadmill with FTMS support</li>
+      <li>A Garmin watch that supports external footpod sensors</li>
+      <li>USB-C cable for flashing</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/nathanmarlor/treadlink">GitHub</a> &middot; MIT License &middot; Made by Nathan Marlor
+  </div>
+</div>
+
+</body>
+</html>

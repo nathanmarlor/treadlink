@@ -1,0 +1,14 @@
+{
+  "name": "TreadLink",
+  "version": "v1.0.0",
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "https://github.com/nathanmarlor/treadlink/releases/download/v1.0.0/treadlink-bootloader.bin", "offset": 0 },
+        { "path": "https://github.com/nathanmarlor/treadlink/releases/download/v1.0.0/treadlink-partitions.bin", "offset": 32768 },
+        { "path": "https://github.com/nathanmarlor/treadlink/releases/download/v1.0.0/treadlink-firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

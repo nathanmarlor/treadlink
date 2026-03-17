@@ -22,6 +22,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sa
 .data-val{font-size:2em;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
 .data-val.inactive{color:var(--text-sec);opacity:0.4}
 .data-unit{font-size:0.7em;color:var(--text-sec);margin-top:2px;font-weight:500}
+.data-source{font-size:0.6em;color:var(--yellow);margin-top:1px;font-weight:500}
 .btn{display:block;width:100%;padding:12px;border:none;border-radius:8px;cursor:pointer;font-size:0.9em;font-weight:600;transition:all 0.15s;text-align:center}
 .btn-accent{background:var(--accent);color:#0f1117}.btn-accent:hover{filter:brightness(1.1)}
 .btn-accent:disabled{background:var(--card-border);color:var(--text-sec);cursor:default}
@@ -55,22 +56,26 @@ input:focus,select:focus{border-color:var(--accent)}
 .collapse-btn svg{width:16px;height:16px;fill:var(--text-sec);transition:transform 0.2s}
 .collapse-btn.open svg{transform:rotate(180deg)}
 .collapse-content{max-height:0;overflow:hidden;transition:max-height 0.3s}
-.collapse-content.open{max-height:600px}
-.ctrl-group{}
+.collapse-content.open{max-height:800px}
+.ctrl-group{margin-bottom:14px}
 .ctrl-label{font-size:0.72em;color:var(--text-sec);font-weight:500;margin-bottom:6px}
 .ctrl-label span{color:var(--text-sec)}
 .ctrl-row{display:flex;align-items:center;gap:8px}
-.ctrl-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--card-border);background:var(--bg);color:var(--text);font-size:1.3em;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent;user-select:none}
+.ctrl-btn{width:52px;height:52px;border-radius:50%;border:1px solid var(--card-border);background:var(--bg);color:var(--text);font-size:1.5em;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent;user-select:none}
 .ctrl-btn:active{background:var(--accent);color:#0f1117;border-color:var(--accent)}
 .ctrl-val-wrap{flex:1;text-align:center;position:relative}
 .ctrl-val{font-size:2em;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
 .ctrl-slider{width:100%;margin-top:4px;accent-color:var(--accent);height:4px;-webkit-appearance:none;appearance:none;background:var(--card-border);border-radius:2px;outline:none}
-.ctrl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer}
+.ctrl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--accent);cursor:pointer}
 .ctrl-presets{display:flex;gap:6px;margin-top:8px}
-.ctrl-preset{flex:1;padding:6px 0;border:1px solid var(--card-border);border-radius:6px;background:var(--bg);color:var(--text-sec);font-size:0.72em;font-weight:600;cursor:pointer;text-align:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent}
+.ctrl-preset{flex:1;padding:10px 0;border:1px solid var(--card-border);border-radius:6px;background:var(--bg);color:var(--text-sec);font-size:0.75em;font-weight:600;cursor:pointer;text-align:center;transition:all 0.12s;-webkit-tap-highlight-color:transparent}
 .ctrl-preset:active,.ctrl-preset.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-.ctrl-stop-btn{padding:12px 20px;border:2px solid var(--red);border-radius:8px;background:rgba(239,83,80,0.1);color:var(--red);font-size:0.95em;font-weight:800;letter-spacing:0.05em;cursor:pointer;transition:all 0.12s;-webkit-tap-highlight-color:transparent}
+.ctrl-feedback{text-align:center;font-size:0.72em;padding:6px 0;min-height:1.6em;transition:color 0.2s}
+.ctrl-stop-btn{display:block;width:100%;padding:16px;border:2px solid var(--red);border-radius:8px;background:rgba(239,83,80,0.1);color:var(--red);font-size:1.1em;font-weight:800;letter-spacing:0.05em;cursor:pointer;transition:all 0.12s;-webkit-tap-highlight-color:transparent;text-align:center;margin-top:8px}
 .ctrl-stop-btn:active{background:var(--red);color:#fff}
+.sim-banner{padding:8px 12px;border-radius:6px;font-size:0.78em;font-weight:600;text-align:center;margin-bottom:12px}
+.sim-banner.active{background:rgba(102,187,106,0.12);color:var(--green);border:1px solid rgba(102,187,106,0.25)}
+.sim-banner.inactive{background:var(--bg);color:var(--text-sec);border:1px solid var(--card-border)}
 </style>
 </head>
 <body>
@@ -99,18 +104,32 @@ input:focus,select:focus{border-color:var(--accent)}
     <div class="data-cell">
       <div class="data-val inactive" id="val-speed">--</div>
       <div class="data-unit" id="unit-speed">km/h</div>
+      <div class="data-source" id="src-speed"></div>
+    </div>
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-pace">--</div>
+      <div class="data-unit" id="unit-pace">min/km</div>
+      <div class="data-source" id="src-pace"></div>
     </div>
     <div class="data-cell">
       <div class="data-val inactive" id="val-cadence">--</div>
       <div class="data-unit">steps/min</div>
+      <div class="data-source" id="src-cadence"></div>
     </div>
     <div class="data-cell">
       <div class="data-val inactive" id="val-distance">--</div>
       <div class="data-unit" id="unit-distance">metres</div>
+      <div class="data-source" id="src-distance"></div>
     </div>
     <div class="data-cell">
       <div class="data-val inactive" id="val-incline">--</div>
       <div class="data-unit">% incline</div>
+      <div class="data-source" id="src-incline"></div>
+    </div>
+    <div class="data-cell">
+      <div class="data-val inactive" id="val-stride">--</div>
+      <div class="data-unit">stride cm</div>
+      <div class="data-source" id="src-stride"></div>
     </div>
   </div>
 </div>
@@ -139,6 +158,87 @@ input:focus,select:focus{border-color:var(--accent)}
     </div>
     <button class="btn btn-danger" onclick="doDisconnect()" style="margin-top:12px">Disconnect</button>
     <button class="btn-link" onclick="doDisconnectAndScan()" style="display:block;text-align:center;width:100%">Switch treadmill</button>
+  </div>
+</div>
+
+<div class="card" id="control-card" style="display:none">
+  <button class="collapse-btn" id="ctrl-toggle" onclick="toggleCtrl()">
+    Treadmill Control
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </button>
+  <div class="collapse-content" id="ctrl-body">
+  <div style="padding-top:12px">
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Speed <span id="ctrl-speed-unit">km/h</span></div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="ctrlAdj('speed',-0.5)">-</button>
+      <div class="ctrl-val-wrap">
+        <div class="ctrl-val" id="ctrl-speed-val">0.0</div>
+        <input type="range" id="ctrl-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
+      </div>
+      <button class="ctrl-btn" onclick="ctrlAdj('speed',0.5)">+</button>
+    </div>
+    <div class="ctrl-presets" id="speed-presets"></div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Incline %</div>
+    <div class="ctrl-row">
+      <button class="ctrl-btn" onclick="ctrlAdj('incline',-0.5)">-</button>
+      <div class="ctrl-val-wrap">
+        <div class="ctrl-val" id="ctrl-incline-val">0.0</div>
+        <input type="range" id="ctrl-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
+      </div>
+      <button class="ctrl-btn" onclick="ctrlAdj('incline',0.5)">+</button>
+    </div>
+  </div>
+
+  <div class="ctrl-feedback" id="ctrl-status" style="color:var(--text-sec)">Ready</div>
+
+  <button class="btn btn-accent" id="ctrl-start-btn" onclick="ctrlStart()">Start</button>
+  <button class="ctrl-stop-btn" onclick="ctrlStop()">EMERGENCY STOP</button>
+
+  </div>
+  </div>
+</div>
+
+<div class="card">
+  <button class="collapse-btn" id="sim-toggle" onclick="toggleSim()">
+    Simulate
+    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+  </button>
+  <div class="collapse-content" id="sim-body">
+    <div style="padding-top:12px">
+      <div class="sim-banner inactive" id="sim-banner">Inactive</div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Speed <span id="sim-speed-unit">km/h</span></div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn" onclick="simAdj('speed',-0.5)">-</button>
+          <div class="ctrl-val-wrap">
+            <div class="ctrl-val" id="sim-speed-val">0.0</div>
+            <input type="range" id="sim-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
+          </div>
+          <button class="ctrl-btn" onclick="simAdj('speed',0.5)">+</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Incline %</div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn" onclick="simAdj('incline',-0.5)">-</button>
+          <div class="ctrl-val-wrap">
+            <div class="ctrl-val" id="sim-incline-val">0.0</div>
+            <input type="range" id="sim-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
+          </div>
+          <button class="ctrl-btn" onclick="simAdj('incline',0.5)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-accent" id="sim-toggle-btn" onclick="simToggle()" style="flex:1">Start Simulating</button>
+        <button class="btn btn-danger" onclick="simStop()" style="flex:1">Stop</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -190,82 +290,6 @@ input:focus,select:focus{border-color:var(--accent)}
   </div>
 </div>
 
-<div class="card" id="control-card" style="display:none">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div style="font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-sec)">Treadmill Control</div>
-    <div style="font-size:0.7em;color:var(--green)" id="ctrl-status">Ready</div>
-  </div>
-
-  <div class="ctrl-group">
-    <div class="ctrl-label">Speed <span id="ctrl-speed-unit">km/h</span></div>
-    <div class="ctrl-row">
-      <button class="ctrl-btn" onclick="ctrlAdj('speed',-0.5)">-</button>
-      <div class="ctrl-val-wrap">
-        <input type="range" id="ctrl-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
-        <div class="ctrl-val" id="ctrl-speed-val">0.0</div>
-      </div>
-      <button class="ctrl-btn" onclick="ctrlAdj('speed',0.5)">+</button>
-    </div>
-    <div class="ctrl-presets" id="speed-presets"></div>
-  </div>
-
-  <div class="ctrl-group" style="margin-top:14px">
-    <div class="ctrl-label">Incline %</div>
-    <div class="ctrl-row">
-      <button class="ctrl-btn" onclick="ctrlAdj('incline',-0.5)">-</button>
-      <div class="ctrl-val-wrap">
-        <input type="range" id="ctrl-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
-        <div class="ctrl-val" id="ctrl-incline-val">0.0</div>
-      </div>
-      <button class="ctrl-btn" onclick="ctrlAdj('incline',0.5)">+</button>
-    </div>
-  </div>
-
-  <div style="display:flex;gap:8px;margin-top:16px">
-    <button class="btn btn-accent" id="ctrl-start-btn" onclick="ctrlStart()" style="flex:1">Start</button>
-    <button class="ctrl-stop-btn" onclick="ctrlStop()">STOP</button>
-  </div>
-</div>
-
-<div class="card">
-  <button class="collapse-btn" id="diag-toggle" onclick="toggleDiag()">
-    Diagnostics
-    <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-  </button>
-  <div class="collapse-content" id="diag-body">
-    <div style="padding-top:12px">
-      <div class="section-label">Simulate treadmill data (no treadmill needed)</div>
-      <div class="ctrl-group">
-        <div class="ctrl-label">Speed <span id="sim-speed-unit">km/h</span></div>
-        <div class="ctrl-row">
-          <button class="ctrl-btn" onclick="simAdj('speed',-0.5)">-</button>
-          <div class="ctrl-val-wrap">
-            <input type="range" id="sim-speed" min="0" max="20" step="0.5" value="0" class="ctrl-slider">
-            <div class="ctrl-val" id="sim-speed-val">0.0</div>
-          </div>
-          <button class="ctrl-btn" onclick="simAdj('speed',0.5)">+</button>
-        </div>
-      </div>
-      <div class="ctrl-group" style="margin-top:10px">
-        <div class="ctrl-label">Incline %</div>
-        <div class="ctrl-row">
-          <button class="ctrl-btn" onclick="simAdj('incline',-0.5)">-</button>
-          <div class="ctrl-val-wrap">
-            <input type="range" id="sim-incline" min="-5" max="15" step="0.5" value="0" class="ctrl-slider">
-            <div class="ctrl-val" id="sim-incline-val">0.0</div>
-          </div>
-          <button class="ctrl-btn" onclick="simAdj('incline',0.5)">+</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="btn btn-accent" id="sim-toggle-btn" onclick="simToggle()" style="flex:1">Start Simulating</button>
-        <button class="btn btn-danger" onclick="simStop()" style="flex:1">Stop</button>
-      </div>
-      <div style="font-size:0.72em;color:var(--text-sec);margin-top:8px;text-align:center" id="sim-status">Inactive</div>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -285,6 +309,71 @@ function setVal(id, val, active) {
   const el = $(id);
   el.textContent = val;
   el.className = active ? 'data-val' : 'data-val inactive';
+}
+
+function speedToPace(kmh) {
+  if (kmh < 0.5) return '--';
+  const paceMin = isMph ? (60 / (kmh / 1.60934)) : (60 / kmh);
+  const mins = Math.floor(paceMin);
+  const secs = Math.round((paceMin - mins) * 60);
+  return mins + ':' + (secs < 10 ? '0' : '') + secs;
+}
+
+function setDataSource(prefix, label) {
+  const ids = ['speed','pace','cadence','distance','incline','stride'];
+  ids.forEach(id => {
+    const el = $('src-' + id);
+    if (el) el.textContent = label;
+  });
+}
+
+function updateDataGrid(d, source) {
+  const active = source !== 'none';
+  const srcLabel = source === 'sim' ? 'SIM' : '';
+
+  if (active) {
+    if (isMph) {
+      setVal('val-speed', (d.speed_kmh / 1.60934).toFixed(1), true);
+      $('unit-speed').textContent = 'mph';
+      const mi = (d.distance_m / 1609.344);
+      setVal('val-distance', mi < 10 ? mi.toFixed(2) : mi.toFixed(1), true);
+      $('unit-distance').textContent = 'miles';
+    } else {
+      setVal('val-speed', d.speed_kmh.toFixed(1), true);
+      $('unit-speed').textContent = 'km/h';
+      const km = d.distance_m / 1000;
+      if (d.distance_m < 1000) {
+        setVal('val-distance', d.distance_m, true);
+        $('unit-distance').textContent = 'metres';
+      } else {
+        setVal('val-distance', km.toFixed(2), true);
+        $('unit-distance').textContent = 'km';
+      }
+    }
+    setVal('val-pace', speedToPace(d.speed_kmh), true);
+    $('unit-pace').textContent = isMph ? 'min/mi' : 'min/km';
+    setVal('val-cadence', d.cadence_spm, true);
+    setVal('val-incline', d.incline_pct.toFixed(1), true);
+    // Estimate stride from speed and cadence
+    if (d.cadence_spm > 0 && d.speed_kmh > 0.5) {
+      const speedMps = d.speed_kmh / 3.6;
+      const strideCm = Math.round(speedMps / (d.cadence_spm / 60) * 100);
+      setVal('val-stride', strideCm, true);
+    } else {
+      setVal('val-stride', '--', false);
+    }
+  } else {
+    setVal('val-speed', '--', false);
+    setVal('val-pace', '--', false);
+    setVal('val-cadence', '--', false);
+    setVal('val-distance', '--', false);
+    setVal('val-incline', '--', false);
+    setVal('val-stride', '--', false);
+    $('unit-speed').textContent = isMph ? 'mph' : 'km/h';
+    $('unit-pace').textContent = isMph ? 'min/mi' : 'min/km';
+    $('unit-distance').textContent = isMph ? 'miles' : 'metres';
+  }
+  setDataSource('data', srcLabel);
 }
 
 function updateStatus(d) {
@@ -329,42 +418,26 @@ function updateStatus(d) {
   if (showCtrl) {
     syncControlFromStatus(d);
   } else if (!d.treadmill_connected) {
-    // Reset control state on disconnect
     setCtrlSpeed(0);
     setCtrlIncline(0);
     $('ctrl-start-btn').textContent = 'Start';
     $('ctrl-start-btn').style.background = '';
   }
 
-  // Data grid: show values when connected, dashes when not
+  // Data grid: treadmill data > sim data > inactive
   if (d.treadmill_connected) {
-    if (isMph) {
-      setVal('val-speed', (d.speed_kmh / 1.60934).toFixed(1), true);
-      $('unit-speed').textContent = 'mph';
-      const mi = (d.distance_m / 1609.344);
-      setVal('val-distance', mi < 10 ? mi.toFixed(2) : mi.toFixed(1), true);
-      $('unit-distance').textContent = 'miles';
-    } else {
-      setVal('val-speed', d.speed_kmh.toFixed(1), true);
-      $('unit-speed').textContent = 'km/h';
-      const km = d.distance_m / 1000;
-      if (d.distance_m < 1000) {
-        setVal('val-distance', d.distance_m, true);
-        $('unit-distance').textContent = 'metres';
-      } else {
-        setVal('val-distance', km.toFixed(2), true);
-        $('unit-distance').textContent = 'km';
-      }
-    }
-    setVal('val-cadence', d.cadence_spm, true);
-    setVal('val-incline', d.incline_pct.toFixed(1), true);
+    updateDataGrid(d, 'live');
+  } else if (simActive) {
+    // Show simulated values in grid
+    const simData = {
+      speed_kmh: simDisplayKmh(),
+      cadence_spm: simEstCadence(),
+      distance_m: 0,
+      incline_pct: simIncline
+    };
+    updateDataGrid(simData, 'sim');
   } else {
-    setVal('val-speed', '--', false);
-    setVal('val-cadence', '--', false);
-    setVal('val-distance', '--', false);
-    setVal('val-incline', '--', false);
-    $('unit-speed').textContent = isMph ? 'mph' : 'km/h';
-    $('unit-distance').textContent = isMph ? 'miles' : 'metres';
+    updateDataGrid(d, 'none');
   }
 }
 
@@ -449,7 +522,6 @@ async function doStopAndScan() {
 
 async function doDisconnectAndScan() {
   await doDisconnect();
-  // Wait for disconnect to take effect
   await new Promise(r => setTimeout(r, 500));
   doScan();
 }
@@ -504,30 +576,34 @@ function showToast(msg, ok) {
 function toggleStaFields() {
   $('sta-fields').style.display = $('cfg-wifi-mode').value === '1' ? '' : 'none';
 }
-
 function toggleSettings() {
   $('settings-body').classList.toggle('open');
   $('settings-toggle').classList.toggle('open');
 }
-
 function toggleLog() {
   $('log-body').classList.toggle('open');
   $('log-toggle').classList.toggle('open');
+}
+function toggleCtrl() {
+  $('ctrl-body').classList.toggle('open');
+  $('ctrl-toggle').classList.toggle('open');
+}
+function toggleSim() {
+  $('sim-body').classList.toggle('open');
+  $('sim-toggle').classList.toggle('open');
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // --- Treadmill Control ---
-// Internal state always in km/h — converted to display units for UI
 let ctrlSpeedKmh = 0;
 let ctrlIncline = 0;
 let ctrlUserDragging = false;
-let ctrlLastMph = null; // track unit changes to rebuild UI
+let ctrlLastMph = null;
 
 const KMH_TO_MPH = 1 / 1.60934;
 const MPH_TO_KMH = 1.60934;
 
-// Presets defined in km/h, displayed in user's units
 const speedPresets = [
   {label:'Walk', kmh:4}, {label:'Jog', kmh:8}, {label:'Run', kmh:12}, {label:'Sprint', kmh:16}
 ];
@@ -568,7 +644,6 @@ function setCtrlSpeed(kmh) {
   $('ctrl-speed').value = display;
   $('ctrl-speed-val').textContent = display.toFixed(1);
   $('ctrl-speed-unit').textContent = ctrlSpeedUnit();
-  // Highlight matching preset
   document.querySelectorAll('.ctrl-preset').forEach((el, i) => {
     el.classList.toggle('active', Math.abs(speedPresets[i].kmh - kmh) < 0.3);
   });
@@ -582,7 +657,6 @@ function setCtrlIncline(v) {
 
 function ctrlAdj(type, delta) {
   if (type === 'speed') {
-    // delta is in display units (0.5 mph or 0.5 km/h)
     const curDisplay = ctrlDisplaySpeed(ctrlSpeedKmh);
     const newDisplay = Math.max(0, Math.min(ctrlMaxSpeed(), curDisplay + delta));
     const newKmh = ctrlToKmh(newDisplay);
@@ -600,7 +674,6 @@ $('ctrl-speed').addEventListener('input', function() {
   const displayVal = parseFloat(this.value);
   ctrlSpeedKmh = ctrlToKmh(displayVal);
   $('ctrl-speed-val').textContent = displayVal.toFixed(1);
-  // Highlight matching preset
   document.querySelectorAll('.ctrl-preset').forEach((el, i) => {
     el.classList.toggle('active', Math.abs(speedPresets[i].kmh - ctrlSpeedKmh) < 0.3);
   });
@@ -628,14 +701,30 @@ async function sendControl(body) {
     });
     const d = await r.json();
     if (d.error === 'no_control') {
-      st.textContent = 'Not supported'; st.style.color = 'var(--red)';
+      st.textContent = 'Treadmill does not support remote control';
+      st.style.color = 'var(--red)';
     } else if (d.error) {
-      st.textContent = 'Failed'; st.style.color = 'var(--red)';
+      st.textContent = 'Command failed';
+      st.style.color = 'var(--red)';
     } else {
-      st.textContent = 'Sent'; st.style.color = 'var(--green)';
+      // Show what was sent
+      if (body.action === 'set_speed') {
+        const display = isMph ? (body.speed_kmh).toFixed(1) + ' mph' : (body.speed_kmh).toFixed(1) + ' km/h';
+        st.textContent = 'Speed \u2192 ' + display;
+      } else if (body.action === 'set_incline') {
+        st.textContent = 'Incline \u2192 ' + body.incline_pct.toFixed(1) + '%';
+      } else if (body.action === 'start') {
+        st.textContent = 'Started';
+      } else if (body.action === 'stop') {
+        st.textContent = 'Stopped';
+      } else {
+        st.textContent = 'Sent';
+      }
+      st.style.color = 'var(--green)';
     }
   } catch(e) {
-    st.textContent = 'Error'; st.style.color = 'var(--red)';
+    st.textContent = 'Connection error';
+    st.style.color = 'var(--red)';
   }
 }
 
@@ -644,23 +733,25 @@ function ctrlStart() {
   $('ctrl-start-btn').textContent = 'Running';
   $('ctrl-start-btn').style.background = 'var(--green)';
 }
+let ctrlStopPending = false;
 function ctrlStop() {
   sendControl({action:'stop'});
+  sendControl({action:'set_speed', speed_kmh: 0});
   setCtrlSpeed(0);
   $('ctrl-start-btn').textContent = 'Start';
   $('ctrl-start-btn').style.background = '';
+  ctrlStopPending = true;
+  setTimeout(function() { ctrlStopPending = false; }, 5000);
 }
 
-// Sync control sliders from live treadmill data
 function syncControlFromStatus(d) {
-  if (!d.has_control || ctrlUserDragging) return;
+  if (!d.has_control || ctrlUserDragging || simActive || ctrlStopPending) return;
 
-  // Rebuild presets and slider if units changed
   if (ctrlLastMph !== isMph) {
     ctrlLastMph = isMph;
     ctrlSetupSlider();
     buildPresets();
-    setCtrlSpeed(ctrlSpeedKmh); // re-render display
+    setCtrlSpeed(ctrlSpeedKmh);
   }
 
   if (d.treadmill_connected && d.speed_kmh > 0) {
@@ -689,9 +780,11 @@ let simIncline = 0;
 let simActive = false;
 let simInterval = null;
 
-function toggleDiag() {
-  $('diag-body').classList.toggle('open');
-  $('diag-toggle').classList.toggle('open');
+function simDisplayKmh() { return simSpeedKmh; }
+function simEstCadence() {
+  // Mirror data_bridge estimation for display
+  if (simSpeedKmh < 0.1) return 0;
+  return Math.min(254, Math.max(0, Math.round(simSpeedKmh * 1.4 + 120)));
 }
 
 function simSetupSlider() {
@@ -741,16 +834,28 @@ async function simSend() {
   } catch(e) {}
 }
 
+function simUpdateBanner() {
+  const b = $('sim-banner');
+  if (simActive) {
+    const spd = ctrlDisplaySpeed(simSpeedKmh).toFixed(1);
+    const unit = ctrlSpeedUnit();
+    b.textContent = 'Simulating ' + spd + ' ' + unit + ', ' + simIncline.toFixed(1) + '% incline';
+    b.className = 'sim-banner active';
+  } else {
+    b.textContent = 'Inactive';
+    b.className = 'sim-banner inactive';
+  }
+}
+
 function simToggle() {
   if (simActive) { simStop(); return; }
   simActive = true;
   $('sim-toggle-btn').textContent = 'Simulating...';
   $('sim-toggle-btn').style.background = 'var(--green)';
   $('sim-toggle-btn').style.color = '#0f1117';
-  $('sim-status').textContent = 'Active - sending to Garmin';
-  $('sim-status').style.color = 'var(--green)';
+  simUpdateBanner();
   simSend();
-  simInterval = setInterval(simSend, 1000);
+  simInterval = setInterval(function() { simSend(); simUpdateBanner(); }, 1000);
 }
 
 function simStop() {
@@ -759,11 +864,9 @@ function simStop() {
   $('sim-toggle-btn').textContent = 'Start Simulating';
   $('sim-toggle-btn').style.background = '';
   $('sim-toggle-btn').style.color = '';
-  $('sim-status').textContent = 'Inactive';
-  $('sim-status').style.color = 'var(--text-sec)';
-  // Send zero speed to stop
   simSpeedKmh = 0; simIncline = 0;
   simUpdateDisplay();
+  simUpdateBanner();
   fetch('/api/simulate', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({speed_kmh: 0, incline_pct: 0})
@@ -771,6 +874,7 @@ function simStop() {
 }
 
 simSetupSlider();
+simUpdateBanner();
 
 $('cfg-wifi-mode').addEventListener('change', toggleStaFields);
 loadConfig();
@@ -779,6 +883,12 @@ let pollTimer = setInterval(poll, 1000);
 let logTimer = setInterval(pollLog, 2000);
 poll();
 pollLog();
+
+window.addEventListener('beforeunload', function() {
+  if (simActive) {
+    navigator.sendBeacon('/api/simulate', JSON.stringify({speed_kmh: 0, incline_pct: 0}));
+  }
+});
 
 document.addEventListener('visibilitychange', function() {
   if (document.hidden) {

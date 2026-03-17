@@ -85,6 +85,11 @@ static esp_err_t handler_status(httpd_req_t *req)
     uint16_t recon_attempts = ftms_client_get_reconnect_attempts();
 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    // Return zeroed data fields when treadmill not connected (avoids stale sim data)
+    float speed = s_live_data.treadmill_connected ? s_live_data.speed_kmh : 0;
+    uint8_t cadence = s_live_data.treadmill_connected ? s_live_data.cadence_spm : 0;
+    uint32_t distance = s_live_data.treadmill_connected ? s_live_data.distance_m : 0;
+    float incline = s_live_data.treadmill_connected ? s_live_data.incline_pct : 0;
     int len = snprintf(buf, sizeof(buf),
         "{\"treadmill_connected\":%s,\"garmin_connected\":%s,"
         "\"speed_kmh\":%.2f,\"cadence_spm\":%u,\"distance_m\":%lu,"
@@ -93,10 +98,10 @@ static esp_err_t handler_status(httpd_req_t *req)
         "\"has_control\":%s,\"reconnecting\":%s,\"reconnect_attempts\":%u}",
         s_live_data.treadmill_connected ? "true" : "false",
         s_live_data.garmin_connected ? "true" : "false",
-        (double)s_live_data.speed_kmh,
-        (unsigned)s_live_data.cadence_spm,
-        (unsigned long)s_live_data.distance_m,
-        (double)s_live_data.incline_pct,
+        (double)speed,
+        (unsigned)cadence,
+        (unsigned long)distance,
+        (double)incline,
         data_bridge_is_mph_mode() ? "true" : "false",
         s_live_data.treadmill_name,
         s_live_data.treadmill_addr,
@@ -655,6 +660,12 @@ void web_server_update_data(const ftms_treadmill_data_t *ftms, const rsc_data_t 
 void web_server_set_connection_status(bool treadmill_connected, bool garmin_connected)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    // Clear stale data when treadmill disconnects (e.g. after simulation or real disconnect)
+    if (!treadmill_connected && s_live_data.treadmill_connected) {
+        s_live_data.speed_kmh = 0;
+        s_live_data.cadence_spm = 0;
+        s_live_data.incline_pct = 0;
+    }
     s_live_data.treadmill_connected = treadmill_connected;
     s_live_data.garmin_connected = garmin_connected;
     xSemaphoreGive(s_mutex);
